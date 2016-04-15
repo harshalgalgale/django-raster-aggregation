@@ -1,5 +1,6 @@
 from rest_framework import filters, viewsets
 from rest_framework.exceptions import APIException
+from rest_framework.pagination import PageNumberPagination
 from rest_framework_extensions.cache.decorators import cache_response
 from rest_framework_gis.filters import InBBOXFilter
 
@@ -15,12 +16,17 @@ class MissingQueryParameter(APIException):
     default_detail = 'Missing Query Parameter.'
 
 
+class PageNumberPagination1000(PageNumberPagination):
+    page_size = 1000
+
+
 class AggregationAreaViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Regular aggregation Area model view endpoint.
     """
     serializer_class = AggregationAreaSimplifiedSerializer
     filter_fields = ('aggregationlayer', )
+    pagination_class = PageNumberPagination1000
 
     def get_queryset(self):
         qs = AggregationArea.objects.all()
@@ -62,6 +68,7 @@ class AggregationAreaValueViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = AggregationAreaValueSerializer
     filter_fields = ('aggregationlayer', )
+    pagination_class = PageNumberPagination1000
 
     def initial(self, request, *args, **kwargs):
         """
@@ -92,8 +99,8 @@ class AggregationAreaGeoViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = (InBBOXFilter, filters.DjangoFilterBackend, )
     filter_fields = ('name', 'aggregationlayer', )
     bbox_filter_field = 'geom'
-    paginate_by = None
     bbox_filter_include_overlapping = True
+    pagination_class = None
 
     def get_queryset(self):
         queryset = AggregationArea.objects.all()

@@ -137,7 +137,7 @@ class RasterAggregationApiTests(RasterAggregationTestCase):
         response = self.client.get(url + '?layers=a={0},b={1}&formula=a*b&zoom=4'.format(self.rasterlayer.id, self.empty_rasterlayer.id))
 
         # Parse result values
-        result = [dat['value'] for dat in json.loads(response.content.strip().decode())]
+        result = [dat['value'] for dat in json.loads(response.content.strip().decode())['results']]
 
         # Assert all data values are empty
         self.assertEqual(result, [{}, {}])
