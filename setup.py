@@ -25,6 +25,7 @@ setup(
         'djangorestframework>=3.3.3',
         'djangorestframework-gis>=0.9',
         'drf-extensions>=0.2.7',
+        'mapbox-vector-tile>=0.5.0',
     ],
     keywords=['django', 'raster', 'gis', 'gdal', 'celery', 'geo', 'spatial'],
     classifiers=[

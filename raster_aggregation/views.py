@@ -1,9 +1,17 @@
+import mapbox_vector_tile
+from raster.tiles.const import WEB_MERCATOR_SRID
+from raster.tiles.utils import tile_bounds
 from rest_framework import filters, viewsets
 from rest_framework.exceptions import APIException
 from rest_framework_extensions.cache.decorators import cache_response
 from rest_framework_gis.filters import InBBOXFilter
 
-from .models import AggregationArea, AggregationLayer
+from django.contrib.gis.db.models.functions import Intersection, Transform
+from django.contrib.gis.gdal import OGRGeometry
+from django.http import Http404, HttpResponse
+from django.views.generic import View
+
+from .models import AggregationArea, AggregationLayer, AggregationLayerGroup
 from .serializers import (
     AggregationAreaGeoSerializer, AggregationAreaSimplifiedSerializer, AggregationAreaValueSerializer,
     AggregationLayerSerializer
@@ -109,3 +117,42 @@ class AggregationLayerViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return AggregationLayer.objects.all()
+
+
+class VectorTilesView(View):
+
+    def get(self, request, layergroup, x, y, z, response_format, *args, **kwargs):
+        # Select which agglayer to use for this tile.
+        grp = AggregationLayerGroup.objects.get(id=layergroup)
+        layerzoomrange = grp.aggregationlayerzoomrange_set.filter(
+            min_zoom__lte=z,
+            max_zoom__gte=z,
+        ).first()
+        if not layerzoomrange:
+            raise Http404('No layer found for this zoom level')
+        lyr = layerzoomrange.aggregationlayer
+
+        # Compute intersection between the tile boundary and the layer geometries.
+        bounds = tile_bounds(int(x), int(y), int(z))
+        bounds = OGRGeometry.from_bbox(bounds)
+        bounds.srid = WEB_MERCATOR_SRID
+        bounds = bounds.geos
+        result = AggregationArea.objects.filter(
+            aggregationlayer=lyr,
+            geom__intersects=bounds,
+        ).annotate(
+            intersection=Transform(Intersection('geom', bounds), WEB_MERCATOR_SRID)
+        ).only('id', 'name')
+
+        # Render intersection as vector tile in two different available formats.
+        if response_format == '.json':
+            result = ['{{"geometry": {0}, "properties": {{"id": {1}, "name": "{2}"}}}}'.format(dat.intersection.geojson, dat.id, dat.name) for dat in result]
+            result = ','.join(result)
+            result = '{"type": "FeatureCollection","features":[' + result + ']}'
+            return HttpResponse(result, content_type="application/json")
+        elif response_format == '.pbf':
+            result = [{"geometry": bytes(dat.intersection.wkb), "properties": {"id": dat.id, "name": dat.name}} for dat in result]
+            result = mapbox_vector_tile.encode({"name": "testlayer", "features": result})
+            return HttpResponse(result, content_type="application/octet-stream")
+        else:
+            raise Http404('Unknown response format {0}'.format(response_format))

@@ -5,7 +5,7 @@ from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
-from .models import AggregationArea, AggregationLayer, ValueCountResult
+from .models import AggregationArea, AggregationLayer, AggregationLayerGroup, ValueCountResult
 from .tasks import compute_value_count_for_aggregation_layer
 
 
@@ -85,6 +85,19 @@ class ComputeActivityAggregatesModelAdmin(admin.ModelAdmin):
             }
         )
 
+
+class AggregationLayerInLine(admin.TabularInline):
+    model = AggregationLayerGroup.aggregationlayers.through
+
+
+class AggregationLayerGroupAdmin(admin.ModelAdmin):
+    inlines = (
+        AggregationLayerInLine,
+    )
+    exclude = ['aggregationlayers']
+
+
 admin.site.register(AggregationArea)
 admin.site.register(ValueCountResult, ValueCountResultAdmin)
 admin.site.register(AggregationLayer, ComputeActivityAggregatesModelAdmin)
+admin.site.register(AggregationLayerGroup, AggregationLayerGroupAdmin)

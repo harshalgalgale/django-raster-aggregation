@@ -27,12 +27,13 @@ install:
   - pip install djangorestframework-gis==0.9
   - pip install drf-extensions==0.2.7
   - pip install django-filter==0.10.0
+  - pip install mapbox-vector-tile==0.5.0
   - pip install flake8==2.5.0
   - pip install isort==4.2.2
   - pip install coverage==4.2
   - pip install coveralls
 
-script: coverage run --include="raster-aggregation/*" $(which django-admin.py) test
+script: coverage run --include="raster_aggregation/*" $(which django-admin.py) test
 
 after_success: coveralls
 
